@@ -1,27 +1,30 @@
 # Polymorphic components and you
 
-Component reusability is at the heart of React development, and there are a lot of patterns we can adopt to help make components _more_ reusable. Before we dive in to the specific pattern I want to discuss, allow me to share a pretty common scenario you’re likely to encounter in the course of modern React-driven web development:
+Component reusability is at the heart of React development, and there are a lot of patterns we can adopt to help make components _more_ reusable. Before we dive in to the specific pattern I want to discuss, allow me to share a pretty common scenario you’re likely to encounter in the course of React-driven web development:
 
 Let’s say that your design team has provided specs for a button in Figma, like so:
 
-[ADD IMAGE OF BUTTON SPECS HERE]
+![A screenshot of the UI design tool Figma, displaying a Button component with a purple background and white text. It depicts how it appears across various states (eg, “hover”, “active”, etc.)](./images/button-figma.png)
 
 “No problem,” you say, “Seems simple enough!” And then you go ahead and built your `Button` component, like so:
 
 ```jsx
-// In this example, let’s say that `buttonStyles` is a reference
-// to a className that provides styles for your button.
+// In this example, let’s say that `buttonStyles` is a reference to a className
+// that provides styles for your button.
+//
+// For simplicity, I’m omitting handling props for UI variants and states, so
+// we can focus on the topic at hand.
 
 function Button({className, ...otherProps }) {
   return <button className={cx(buttonStyles, className)} {...otherProps} />;
 }
 ```
 
-All is well and good—you have a `Button` component that matches the UI your designer’s specs.
+All is well and good — you have a `Button` component that matches the UI your designer’s specs.
 
 … But wait! Suddenly you’ve been tasked with implementing a feature that involves having a button navigate the user to a new page when clicked. Your designers have used that `Button` as a link.
 
-But it’s not a link — I mean, it certainly _looks_ like a button. And the component we’ve built to represent this UI is called a `Button`. And that component renders `<button>` element … But! Despite all of this, a clickable element that takes you to a new page is a link, not a button.
+But it’s not a link. I mean, it certainly _looks_ like a button. And the component we’ve built to represent this UI is called a `Button`. And that component renders `<button>` element … But! Despite all of this, a clickable element that takes you to a new page is a link, not a button.
 
 HTML provides a number of built-in elements, and these built-ins provide a number of built-in behaviors and conveniences that we should strive to leverage when possible. It’s probably not the responsibility of your designers to understand this. As a developer, you should be able to work around this and use the semantically and functionally correct element.
 
@@ -29,12 +32,12 @@ But how do we approach this? We have a `Button` component, and it renders a `<b
 
 1. ## Using functions provided by router libraries
 
-   It’s common, when building a React application, to use a library or framework that includes ways of programmatically navigating between routes — often in the form of something like a `useRouter` hook. Maybe this is your solution? You can avoid using an `<a>` tag entirely, and maintain the semantics of your `Button` component, by just using an `onClick` and avoiding links entirely! In NextJS, this looks something like so:
+   It’s common, when building a React application, to use a library or framework that includes ways of programmatically navigating between routes, often in the form of something like a `useRouter` hook. Maybe this is your solution? You can avoid using an `<a>` tag entirely, and maintain the semantics of your `Button` component, by just using an `onClick` and avoiding links entirely! In NextJS, this looks something like so:
 
    ```jsx
    import { useRouter } from "next/navigation"
 
-   function ExamplePage() {
+   function DashboardLink() {
      const { push } = useRouter();
 
      return (
@@ -45,7 +48,7 @@ But how do we approach this? We have a `Button` component, and it renders a `<b
    }
    ```
 
-   I hate to be the bearer of bad news, but this is probably not an ideal solution. I used a NextJS example, and even their own docs [warn against this approach](https://nextjs.org/docs/app/api-reference/functions/use-router), unless you have specific cause to do so.
+   I hate to be the bearer of bad news, but this is probably not an ideal solution. I used a NextJS-based example, and even their own docs [warn against this approach](https://nextjs.org/docs/app/api-reference/functions/use-router), unless you have specific cause to do so.
 
    Why might this be? For one thing, this breaks a number of the convenient behaviors that native anchor tags provide by default. For example, this approach breaks the ability for the user to open the link in a new tab, either for later reference or multitasking. This feature would have worked by default if we were rendering an `<a>` tag.
 
@@ -56,7 +59,7 @@ But how do we approach this? We have a `Button` component, and it renders a `<b
    So we’ve established the importance of using the appropriate semantic element. So, taking another stab and implementing this design, maybe you do something like this:
 
    ```jsx
-   function ExamplePage() {
+   function DashboardLink() {
      return (
        <a href="/dashboard">
          <Button>
@@ -69,11 +72,11 @@ But how do we approach this? We have a `Button` component, and it renders a `<b
 
    This may work, but mostly just because browsers are _very_ lenient about malformed HTML, and will actually strive to correct it and let the user see _something_. Technically, this is not valid HTML according to [W3C specs](https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-a-element), which specifically disallows interactive content (which a `<button>` qualifies as) from being a descendant of an `<a>` tag.
 
-   Now, the HTML police probably won’t be coming around to arrest you if you do this, but this approach still negatively impacts on the user experience. One thing to keep in mind is keyboard navigation and managing browser focus, which are both very important accessibility considerations for any user who is not using a pointer device for their primary input. If I’m using a keyboard to tab through focusable elements, or navigating the page with the assistance of a screenreader, then I now have two elements to navigate through—one of which is entirely redundant, and which has no obvious functionality when focused on in isolation.
+   Now, the HTML police probably won’t be coming around to arrest you if you do this, but this approach still negatively impacts on the user experience. One thing to keep in mind is keyboard navigation and managing browser focus, which are both very important accessibility considerations for any user who is not using a pointer device for their primary input. If I’m using a keyboard to tab through focusable elements, or navigating the page with the assistance of a screenreader, then I now have two elements to navigate through — one of which is entirely redundant, and which has no obvious functionality when focused on in isolation.
 
-   This approach also introduces the potential for a category of UI bugs that aren’t possible otherwise. Browsers provide their own user-agent styles to `<a>` tags — Perhaps you haven’t included a CSS reset in your project. Perhaps your team has added their have your own global styles to anchor tags. This means that now, because the `Button` is a descendant of the `<a>`, the `Button` will also inherit the styles that have been applied to the link. This can result in issues like so:
+   This approach also introduces the potential for a category of UI bugs that aren’t possible otherwise. Browsers provide their own user-agent styles to `<a>` tags, and perhaps you haven’t included a CSS reset in your project. Perhaps your team has added their have your own global styles to anchor tags. This means that now, because the `Button` is a descendant of the `<a>`, the `Button` will also inherit the styles that have been applied to the link. This can result in issues like so:
 
-   [ADD IMAGE OF BUTTON WITH A LINK STYLE UNDERLINE ON HOVER]
+   ![A screenshot of a button on a page, rendered as a link. The text label has an underline that should not be present.)](./images/button-underline.png)
 
    That isn’t great. It would be much better if we could _only_ render the elements that are semantically required, while preserving the styles attached to our already-defined component.
 
@@ -93,7 +96,7 @@ But how do we approach this? We have a `Button` component, and it renders a `<b
 
    Not so fast, though. It’s true that we’re rendering the appropriate semantic element, and providing it with the appropriate styles. There’s a number of drawbacks to this approach, though.
 
-   A lot of React development is done with Typescript, so how do we handle prop definitions? How do we handle adding an `href` prop that applies only when `isLink` is true? What about other HTML attributes specific to the anchor tag, like `target`, or `referrerpolicy`? Or vice-versa — what about other button element attributes props like `type` or `value`? Or what if we want to support both native anchor tags, as well as `Link` components from the routing libraries we talked about earlier?
+   A lot of React development is done with Typescript, so how do we handle prop definitions? How do we handle adding an `href` prop that applies only when `isLink` is true? What about other HTML attributes specific to the anchor tag, like `target`, or `referrerpolicy`? Or vice-versa: what about other button element attributes props like `type` or `value`? Or what if we want to support both native anchor tags, as well as `Link` components from the routing libraries we talked about earlier?
 
    You could probably answer these questions by adding increasingly more elaborate prop definitions, and greatly increasing the size of the prop interface itself, but this should signal to you that this is not really a sustainable option, and results in component definitions that are increasingly more complex and are juggling a lot more functionality than is reasonable.
 
@@ -123,22 +126,58 @@ If you’re not using a component library that leverages functionality like this
 
 ```jsx
 function Button({as, className, ...otherProps }) {
-  // We rename the `as` prop to `Component`, because all React custom components must
-  // start with a capital letter. Without doing this, React would assume we were referring
-  // to as native HTML element and render `<as>` into the DOM.
+  // We rename the `as` prop to `Component`, because all React custom components
+  // must start with a capital letter.
+  //
+  // You may choose another name, but without doing this, React would assume we
+  // were referring to a native HTML element and render `<as>` into the DOM.
   const Component = as || "button";
 
   return <Component className={cx(buttonStyles, className)} {...otherProps} />;
 };
 ```
 
-This implementation works, but lacks proper type annotation. Fortunately, there are a number of packages that specifically provide types for this use case, such as [react-polymorphed](https://github.com/nasheomirro/react-polymorphed), and if only for ease of use, I’d generally recommend just using those to add proper type annotations for your component, but if you’re interested in defining the types yourself, then read on.
+This implementation works, but lacks proper type annotation. This is a problem because it means that our implementation won’t stop me from passing in unsupported props like an `href` prop on an `h1`, as in `<Text as="h1" href="https://www.metalab.com">`.
 
-[ADD DIRECTIONS FOR TYPE ANNOTATION HERE]
+The solution to lies with typescript generics. When defining our Button components props, we can define them as a new type with that provides a generic value for the as prop, like so:
+
+```ts
+type ButtonProps<C extends React.ElementType> = {
+  as?: C;
+  // …other Button-specific props can follow, here.
+} & React.ComponentPropsWithoutRef<C>;
+```
+
+This is the basic solution, but there are additional details to consider. For example, `ref` support and other custom props you may want to add to your component. To save you some time, there are a number of packages that specifically provide types for this use case, such as [react-polymorphed](https://github.com/nasheomirro/react-polymorphed), and if only for ease of use, I’d generally recommend just using those to manually re-creating proper type annotations for your polymorphic components.
 
 What is especially fantastic about this is how this allows Typescript to provide automatic type-checking for component props based on the value of the `as` prop, and provide appropriate suggestions, like so:
 
-[ADD GIF OF VSCODE INTELLISENSE SUGGESTIONS WHEN SWAPPING `AS` PROP VALUE HERE]
+![A gif of a text editor, displaying real-time feedback and validation for component props as the user types, with updates as the `as` prop value is changed.](./images/button-types.gif)
+
+## Composing polymorphically
+
+The early examples in this article that examined the drawbacks of non-polymorphic UI components focused on rendering semantic HTML. But there are further benefits to this pattern: they allow you to rapidly compose new components that extend from your primitive UI components.
+
+Let’s say, for example, you have an `<Input>` component that renders a text input with preset styles for your web app, and are now tasked with adding a new feature: a variation of this input that looks identical, but masks the input value. Masking the input value, in this case, means rendering the user’s input value in a preset format, like a date or phone-number, like so:
+
+![An animated example of a text input that pre-formats user input into a date.](./images/masked-input-example.gif)
+
+This is a common pattern, so it’s likely that we’ll reach for pre-existing solutions. For the following example, I chose the [react-input-mask](https://www.npmjs.com/package/react-input-mask) package, which works for our example because it’s component-based.
+
+If we had built our `Input` non-polymorphically, there’s a lot of additional overhead. Because `InputMask` is already defined as it’s own component, how do we share our base UI styles with it? Do we copy our many tailwind classes into a new `MaskedInput` component? What happens when we want to update the input styles; how do we keep them in sync?
+
+These questions are answered easily when you have the ability to compose polymorphically, because we can just write:
+
+```jsx
+import InputMask from "react-input-mask";
+import {Input} from "./components";
+
+// For the above imports, let’s say we have our own primitive UI input component
+// with `as` prop support being imported from our local `./components` folder.
+// Later, in our JSX, we can write…
+
+<Input as={InputMask} mask="YYYY-MM-DD" {...otherProps} />
+```
 
 ## Drawbacks with the `as` prop
 
@@ -157,13 +196,13 @@ Now imagine the `Card` needs to be clickable. The `Card` is polymorphic, so let�
   <Card as="button" type="alternate" />
 ```
 
-… But what happens if this also needs to be nested in a `<form>`? This `Card` shouldn’t submit the form, so we need to add `type="button"` to prevent the button rendered by the `Card` from triggering the submit action. This poses a problem — how do we pass `type="button"` to the `Card`, when `type` is already used for different purposes in the `Card`? Well, one workaround is to just introduce an intermediary component function that handles this:
+… But what happens if this also needs to be nested in a `<form>`? This `Card` shouldn’t submit the form, so we need to add `type="button"` to prevent the button rendered by the `Card` from triggering the submit action. This poses a problem: how do we pass `type="button"` to the `Card`, when `type` is already used for different purposes in the `Card`? Well, one workaround is to just introduce an intermediary component function that handles this:
 
 ```jsx
   <Card disabled as={(props) => <button {...props} type="button" />} />
 ```
 
-Treating `as` as a render prop works, but isn’t ideal — we’re defining a new functional component here, that will be re-created on every render. We can work around this by memoizing the function, or moving it outside of the render function, but this approach can become cumbersome if you find yourself requiring this regularly.
+Treating `as` as a render prop works, but isn’t ideal. We’re effectively defining a new functional component here, that will be re-created on every render. We can work around this by memoizing the function, or moving it outside of the render function, but this approach can become cumbersome if you find yourself requiring this regularly.
 
 ## Enter `asChild`
 
@@ -197,7 +236,7 @@ This approach handily avoids the problem of prop collisions by favoring a more c
 
 We aren’t done yet, though — there are tradeoffs to be aware of.
 
-A component that implements polymorphism via `asChild` forwards props without regard to whether the child element is designed to accept them. In most cases, this may be just a `className`, which can be easy to account for — the biggest value that polymorphic components provide is arguably separating the UI from the logic. However, some polymorphic components may be designed to provide specific behaviors, such as Radix UI’s `TooltipTrigger`, and will also provide various `aria` attributes for accessibility purposes.
+A component that implements polymorphism via `asChild` forwards props without regard to whether the child element is designed to accept them. In most cases, this may be just a `className`, which can be easy to account for. Arguably the biggest value that polymorphic components provide is separating the UI from the logic. However, some polymorphic components may be designed to provide specific behaviors, such as Radix UI’s `TooltipTrigger`, and will also provide various `aria` attributes for accessibility purposes.
 
 Because the root polymorphic component and it’s child are declared separately as two distinct JSX nodes, the Typescript compiler cannot guarantee compatibility, and you must consider the private implementation details of the “parent” component, in order to prevent the rendering of invalid HTML.
 
@@ -219,7 +258,7 @@ Unlike the `as` prop approach, Typescript will not be able to alert you that the
 
 ## What other approaches are there?
 
-[https://base-ui.com/react/overview/quick-start](Base UI) is an up-and-coming component library made by many of the previous maintainers of Radix. Interestingly, they’ve opted not to continue using the `asChild` pattern, in favor of a `render` prop. In practice, it looks something like this:
+[Base UI](https://base-ui.com/react/overview/quick-start) is an up-and-coming component library made by many of the previous maintainers of Radix. Interestingly, they’ve opted not to continue using the `asChild` pattern, in favor of a `render` prop. In practice, it looks something like this:
 
 ```jsx
   <Button render={<a href="/dashboard" />}>
@@ -227,12 +266,15 @@ Unlike the `as` prop approach, Typescript will not be able to alert you that the
   </Button>
 ```
 
-How is this `render` prop different? In usage, this feels like it falls somewhere between the `as` and `asChild` approaches. Like with `asChild`, this approach clones the declared component and forwards the props passed to the root element. Unlike `asChild`, this includes the polymorphic component’s children — a behavior similar to the `as` prop approach. From a developer experience perspective, this has the benefit of helping to reduce the level of required nesting in dense JSX trees where `asChild` is used.
+How is this `render` prop different? In usage, this feels like it falls somewhere between the `as` and `asChild` approaches. Like with `asChild`, this approach clones the declared component and forwards the props passed to the root element. Unlike `asChild`, this includes the polymorphic component’s children, a behavior similar to the `as` prop approach. From a developer experience perspective, this has the benefit of helping to reduce the level of required nesting in dense JSX trees where `asChild` is used.
 
 Another feature of the `as` prop pattern that this reintroduces is the ability to treat the `render` prop _as a “render prop”_. This means we can also pass a function directly as the `render` prop value, just like we could with the `as` prop, earlier:
 
 ```jsx
-  <Card disabled render={(props) => <button {...props} type="button" />} />
+  <Button
+    disabled
+    render={({disabled, ...restProps}) => <a {...restProps} href={disabled ? "" : "/dashboard"} />}
+  />
 ```
 
 [Base UI’s docs](https://base-ui.com/react/handbook/composition) include additional instructions for `render` prop-based component composition.
